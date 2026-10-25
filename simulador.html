@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo de Hotelling Interactivo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        .controls-panel {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-size: 14px;
+        }
+        .number-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        .number-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #3498db;
+        }
+        #chartContainer {
+            position: relative;
+            height: 600px;
+            margin-bottom: 20px;
+        }
+        .result-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .result-item {
+            background-color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-label {
+            font-weight: 600;
+            color: #34495e;
+        }
+        .result-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2980b9;
+        }
+        .formula-display {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border: 1px solid #bdc3c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Simulación Modelo de Hotelling Generalizado Interactivo</h1>
+        
+        <div class="subtitle">
+            Modelo de competencia espacial con costos de transporte cuadráticos
+        </div>
+        
+        <div style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3498db;">
+            <p style="margin: 5px 0; font-size: 14px; color: #2c3e50;">
+                <strong>📚 Recurso Didáctico Cuantitativo</strong><br>
+                Desarrollado y adaptado por: <strong>José Cotacachi</strong><br>
+                Ingeniería Comercial - Universidad Católica del Norte
+            </p>
+        </div>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <div class="section-title">🏪 Ubicaciones de las Firmas</div>
+                <div style="background-color: #fff; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 13px;">
+                    <strong>📏 Ciudad normalizada:</strong> [0, 1]<br>
+                    Las ubicaciones deben estar entre 0 y 1
+                </div>
+                <div class="control-group">
+                    <label for="posA">Ubicación Firma A (a)</label>
+                    <input type="number" id="posA" class="number-input" min="0" max="1" step="0.01" value="0.25">
+                </div>
+                
+                <div class="control-group">
+                    <label for="posB">Parámetro b (Firma B ubicada en 1-b)</label>
+                    <input type="number" id="posB" class="number-input" min="0" max="1" step="0.01" value="0.2">
+                    <div style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">
+                        Posición real de B: <strong><span id="realBPosition">0.80</span></strong>
+                    </div>
+                </div>
+
+                <div class="section-title">💰 Precios Base</div>
+                <div class="control-group">
+                    <label for="priceA">Precio Firma A (p<sub>A</sub>)</label>
+                    <input type="number" id="priceA" class="number-input" min="0" step="0.1" value="3">
+                </div>
+                
+                <div class="control-group">
+                    <label for="priceB">Precio Firma B (p<sub>B</sub>)</label>
+                    <input type="number" id="priceB" class="number-input" min="0" step="0.1" value="3">
+                </div>
+
+                <div class="section-title">🚗 Parámetros del Modelo</div>
+                <div class="control-group">
+                    <label for="tCost">Costo de Transporte (t)</label>
+                    <input type="number" id="tCost" class="number-input" min="0" step="0.1" value="2">
+                </div>
+                
+                <div class="control-group">
+                    <label for="maxPrice">Precio Máximo (s)</label>
+                    <input type="number" id="maxPrice" class="number-input" min="0" step="0.5" value="10">
+                </div>
+            </div>
+
+            <div>
+                <div id="chartContainer">
+                    <canvas id="hotellingChart"></canvas>
+                </div>
+
+                <div class="result-box">
+                    <h3>📊 Resultados del Modelo</h3>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Consumidor Indiferente (x̄):</span>
+                        <span class="result-value" id="xBarValue">0.5250</span>
+                    </div>
+
+                    <div class="formula-display">
+                        <strong>Fórmula analítica:</strong><br>
+                        x̄ = [p<sub>B</sub> - p<sub>A</sub>] / [2t(1-b-a)] + (1-b-a)/2 + a<br><br>
+                        <strong>Sustituyendo valores:</strong><br>
+                        <span id="formulaSubstitution">x̄ = [3 - 3] / [2(2)(0.55)] + 0.55/2 + 0.25 = 0.5250</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span class="result-label">Cuota de Mercado Firma A:</span>
+                        <span class="result-value" id="marketShareA">52.50%</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span class="result-label">Cuota de Mercado Firma B:</span>
+                        <span class="result-value" id="marketShareB">47.50%</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span class="result-label">Mercado Cautivo Firma A:</span>
+                        <span class="result-value" id="captiveA">25.00%</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span class="result-label">Mercado Cautivo Firma B:</span>
+                        <span class="result-value" id="captiveB">20.00%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('hotellingChart').getContext('2d');
+        let chart;
+
+        const posAInput = document.getElementById('posA');
+        const posBInput = document.getElementById('posB');
+        const priceAInput = document.getElementById('priceA');
+        const priceBInput = document.getElementById('priceB');
+        const tCostInput = document.getElementById('tCost');
+        const maxPriceInput = document.getElementById('maxPrice');
+
+        const realBPositionDisplay = document.getElementById('realBPosition');
+        const xBarValueDisplay = document.getElementById('xBarValue');
+        const formulaSubstitutionDisplay = document.getElementById('formulaSubstitution');
+        const marketShareADisplay = document.getElementById('marketShareA');
+        const marketShareBDisplay = document.getElementById('marketShareB');
+        const captiveADisplay = document.getElementById('captiveA');
+        const captiveBDisplay = document.getElementById('captiveB');
+
+        function calculateIndifferentConsumer(pA, pB, a, b_param, t) {
+            const locationB = 1 - b_param;
+            const distance = locationB - a;
+            const term1 = (pB - pA) / (2 * t * distance);
+            const term2 = distance / 2;
+            const term3 = a;
+            return term1 + term2 + term3;
+        }
+
+        function perceivedPrice(x, price, location, t) {
+            return price + t * Math.pow(x - location, 2);
+        }
+
+        function generateChartData() {
+            const citySize = 1;
+            let pA = parseFloat(priceAInput.value) || 0;
+            let pB = parseFloat(priceBInput.value) || 0;
+            let a = parseFloat(posAInput.value) || 0;
+            let b_param = parseFloat(posBInput.value) || 0.2;
+            const t = parseFloat(tCostInput.value) || 1;
+            const s = parseFloat(maxPriceInput.value) || 10;
+
+            a = Math.max(0, Math.min(1, a));
+            b_param = Math.max(0, Math.min(1, b_param));
+            const locationB = 1 - b_param;
+            realBPositionDisplay.textContent = locationB.toFixed(2);
+            
+            if (a >= locationB) {
+                a = locationB - 0.05;
+                if (a < 0) a = 0;
+            }
+
+            const x_bar = calculateIndifferentConsumer(pA, pB, a, b_param, t);
+            const marketShareA = x_bar * 100;
+            const marketShareB = (1 - x_bar) * 100;
+            const captiveA = a * 100;
+            const captiveB = b_param * 100;
+
+            xBarValueDisplay.textContent = x_bar.toFixed(4);
+            marketShareADisplay.textContent = marketShareA.toFixed(2) + '%';
+            marketShareBDisplay.textContent = marketShareB.toFixed(2) + '%';
+            captiveADisplay.textContent = captiveA.toFixed(2) + '%';
+            captiveBDisplay.textContent = captiveB.toFixed(2) + '%';
+
+            const distance = locationB - a;
+            const term1 = (pB - pA) / (2 * t * distance);
+            const term2 = distance / 2;
+            
+            formulaSubstitutionDisplay.innerHTML = `x̄ = [${pB} - ${pA}] / [2(${t})(${distance.toFixed(4)})] + ${distance.toFixed(4)}/2 + ${a}<br>
+                x̄ = ${term1.toFixed(4)} + ${term2.toFixed(4)} + ${a.toFixed(4)}<br>
+                x̄ = ${x_bar.toFixed(4)}`;
+
+            const blueDataLeft = [];
+            const steps = Math.max(50, Math.floor(a * 200));
+            for (let i = 0; i <= steps; i++) {
+                const x = (a / steps) * i;
+                blueDataLeft.push({ x: x, y: perceivedPrice(x, pA, a, t) });
+            }
+            
+            const blueDataRight = [];
+            const rightSteps = Math.max(100, Math.floor((citySize - a) * 200));
+            for (let i = 0; i <= rightSteps; i++) {
+                const x = a + ((citySize - a) / rightSteps) * i;
+                blueDataRight.push({ x: x, y: perceivedPrice(x, pA, a, t) });
+            }
+
+            const orangeDataLeft = [];
+            const leftStepsB = Math.max(100, Math.floor((locationB - 0) * 200));
+            for (let i = 0; i <= leftStepsB; i++) {
+                const x = (locationB / leftStepsB) * i;
+                orangeDataLeft.push({ x: x, y: perceivedPrice(x, pB, locationB, t) });
+            }
+            
+            const orangeDataRight = [];
+            const rightStepsB = Math.max(50, Math.floor((citySize - locationB) * 200));
+            for (let i = 0; i <= rightStepsB; i++) {
+                const x = locationB + ((citySize - locationB) / rightStepsB) * i;
+                orangeDataRight.push({ x: x, y: perceivedPrice(x, pB, locationB, t) });
+            }
+
+            const redLine = [{x: 0, y: s}, {x: citySize, y: s}];
+            const priceAtXBarA = perceivedPrice(x_bar, pA, a, t);
+            const maxY = Math.max(s * 1.2, priceAtXBarA * 1.5);
+            const xBarLine = [{x: x_bar, y: 0}, {x: x_bar, y: maxY}];
+            const locationALine = [{x: a, y: 0}, {x: a, y: pA}];
+            const locationBLine = [{x: locationB, y: 0}, {x: locationB, y: pB}];
+            const horizLineA = [{x: 0, y: pA}, {x: a, y: pA}];
+            const horizLineB = [{x: locationB, y: pB}, {x: citySize, y: pB}];
+
+            return {
+                blueDataLeft, blueDataRight, orangeDataLeft, orangeDataRight,
+                redLine, xBarLine, locationALine, locationBLine, horizLineA, horizLineB,
+                citySize, x_bar, a, locationB, pA, pB, s
+            };
+        }
+
+        function updateChart() {
+            const data = generateChartData();
+            const datasets = [
+                {
+                    label: 'pₐ + t(x-a)² (Firma A)',
+                    data: [...data.blueDataLeft, ...data.blueDataRight],
+                    borderColor: '#3498db',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'p_b + t(x-b)² (Firma B)',
+                    data: [...data.orangeDataLeft, ...data.orangeDataRight],
+                    borderColor: '#f39c12',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'Precio máximo (s)',
+                    data: data.redLine,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [10, 5],
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: `Consumidor indiferente (x̄ = ${data.x_bar.toFixed(4)})`,
+                    data: data.xBarLine,
+                    borderColor: '#9b59b6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'Ubicación a',
+                    data: data.locationALine,
+                    borderColor: '#95a5a6',
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'Ubicación b',
+                    data: data.locationBLine,
+                    borderColor: '#95a5a6',
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'Línea pₐ',
+                    data: data.horizLineA,
+                    borderColor: '#95a5a6',
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    showLine: true
+                },
+                {
+                    label: 'Línea p_b',
+                    data: data.horizLineB,
+                    borderColor: '#95a5a6',
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    pointRadius: 0,
+                    showLine: true
+                }
+            ];
+
+            if (chart) {
+                chart.data.datasets = datasets;
+                chart.options.scales.x.max = 1;
+                chart.options.scales.x.ticks.callback = function(value) {
+                    if (value === 0) return '0';
+                    if (value === 1) return '1';
+                    if (Math.abs(value - data.a) < 0.02) return `a=${data.a.toFixed(2)}`;
+                    if (Math.abs(value - data.locationB) < 0.02) return `1-b=${data.locationB.toFixed(2)}`;
+                    if (Math.abs(value - data.x_bar) < 0.02) return `x̄=${data.x_bar.toFixed(2)}`;
+                    if (value === 0.25 || value === 0.5 || value === 0.75) return value.toFixed(2);
+                    return '';
+                };
+                chart.options.scales.y.ticks.callback = function(value) {
+                    if (Math.abs(value - data.pA) < 0.1 && Math.abs(value - data.pB) < 0.1) return `pₐ=p_b=${data.pA.toFixed(1)}`;
+                    if (Math.abs(value - data.pA) < 0.1) return `pₐ=${data.pA.toFixed(1)}`;
+                    if (Math.abs(value - data.pB) < 0.1) return `p_b=${data.pB.toFixed(1)}`;
+                    if (Math.abs(value - data.s) < 0.1) return `s=${data.s.toFixed(1)}`;
+                    return value.toFixed(1);
+                };
+                chart.update();
+            } else {
+                initChart(data, datasets);
+            }
+        }
+
+        function initChart(data, datasets) {
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                filter: function(item) { return item.datasetIndex < 4; }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Curvas de Precio Percibido y Consumidor Indiferente',
+                            font: { size: 16, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: 0,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Ubicación del Consumidor (x) - Ciudad normalizada [0, 1]',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'Precio Percibido',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        posAInput.addEventListener('input', updateChart);
+        posBInput.addEventListener('input', updateChart);
+        priceAInput.addEventListener('input', updateChart);
+        priceBInput.addEventListener('input', updateChart);
+        tCostInput.addEventListener('input', updateChart);
+        maxPriceInput.addEventListener('input', updateChart);
+
+        updateChart();
+    </script>
+</body>
+</html>
